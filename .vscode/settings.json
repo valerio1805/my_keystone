@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "types.h": "c",
+        "stddef.h": "c",
+        "string.h": "c",
+        "stdint.h": "c",
+        "utils.h": "c",
+        "platform.h": "c",
+        "kexec.h": "c",
+        "atomic.h": "c",
+        "reboot.h": "c",
+        "x509_custom.h": "c",
+        "ed25519.h": "c",
+        "enclave.h": "c",
+        "crypto.h": "c",
+        "x509custom.h": "c",
+        "time.h": "c",
+        "oid_custom.h": "c"
+    }
+}

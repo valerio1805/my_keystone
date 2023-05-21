@@ -1,0 +1,7 @@
+*~
+*.swp
+.venv/
+build/
+riscv64/
+riscv32/
+build_dir/

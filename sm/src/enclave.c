@@ -510,7 +510,7 @@ unsigned long create_enclave(unsigned long *eidptr, struct keystone_sbi_create c
   mbedtls_x509write_crt_set_md_alg(&enclaves[eid].crt_local_att, KEYSTONE_SHA3);
   
   // The validity of the crt is specified
-  ret = mbedtls_x509write_crt_set_validity(&enclaves[eid].crt_local_att, "20220101000000", "20230101000000");
+  ret = mbedtls_x509write_crt_set_validity(&enclaves[eid].crt_local_att, "20230101000000", "20240101000000");
   if (ret != 0)
   {
     return 0;

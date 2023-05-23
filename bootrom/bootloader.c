@@ -255,7 +255,7 @@ int bootloader()
   mbedtls_x509write_crt_set_md_alg(&cert, KEYSTONE_SHA3);
   
   // The validity of the crt is specified
-  ret = mbedtls_x509write_crt_set_validity(&cert, "20220101000000", "20230101000000");
+  ret = mbedtls_x509write_crt_set_validity(&cert, "20230101000000", "20240101000000");
   if (ret != 0)
   {
     return 0;
@@ -374,7 +374,7 @@ int bootloader()
   mbedtls_x509write_crt_set_md_alg(&cert_root, KEYSTONE_SHA3);
   
   // The validity of the crt is specified
-  ret = mbedtls_x509write_crt_set_validity(&cert_root, "20220101000000", "20230101000000");
+  ret = mbedtls_x509write_crt_set_validity(&cert_root, "20230101000000", "20240101000000");
   if (ret != 0)
   {
     return 0;

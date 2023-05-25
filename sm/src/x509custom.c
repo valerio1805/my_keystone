@@ -2,7 +2,7 @@
 #include "x509custom.h"
 #include "ed25519/ed25519.h"
 #include "sha3/sha3.h"
-
+#include <sbi/sbi_console.h>
 
 
 //////////////////////////////////////////////////////////////////////
@@ -2664,9 +2664,9 @@ int mbedtls_x509_set_extension(mbedtls_asn1_named_data *head, const char *oid, s
     head[*ne].oid.len = oid_len;
     my_memcpy(head[*ne].oid.p_arr, oid, oid_len);
     head[*ne].val.p_arr[0] = critical;
-    head[*ne].val.len = val_len;
-    for(int i = 1; i < val_len; i ++)
-        head[*ne].val.p_arr[i] = val[i-1];
+    head[*ne].val.len = val_len +1;
+    for(int i = 0; i < val_len; i ++)
+        head[*ne].val.p_arr[i + 1] = val[i];
     //my_memcpy(head[*ne].val.p_arr + 1, val, val_len);
 
     *ne = *ne +1;
@@ -3023,11 +3023,12 @@ int x509_get_crt_ext(unsigned char **p,
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     size_t len;
     unsigned char *end_ext_data /**start_ext_octet*/, *end_ext_octet;
+    unsigned char oid_ext2[] = {0x55, 0x1d, 0x13};
 
     if (*p == end) {
         return 0;
     }
-
+    
     if ((ret = mbedtls_x509_get_ext(p, end, &crt->v3_ext, 3)) != 0) {
         return ret;
     }
@@ -3081,9 +3082,28 @@ int x509_get_crt_ext(unsigned char **p,
                                      MBEDTLS_ERR_ASN1_LENGTH_MISMATCH);
         }
 
-        crt ->hash.p = *p;
-        crt ->hash.len = 64;
-        *p = end_ext_octet;
+        if(my_memcmp(extn_oid.p, oid_ext2, 3)== 0){
+            //crt->ca_istrue = 1;
+            //unsigned char app = **p;
+            //crt->max_pathlen = (int) app;
+            //crt->max_pathlen = (*p);
+            //*p +=1;
+            if ((ret = x509_get_basic_constraints(p, end_ext_octet,
+                                                      &crt->ca_istrue, &crt->max_pathlen)) != 0) {
+                  //sbi_printf("Errore dentro basic_constraint\n");
+                   return ret;
+                }
+        }
+        else{
+            //sbi_printf("Arrivato dentro else\n");
+            crt ->hash.p = *p;
+            crt ->hash.len = 64;
+            *p += 64;
+        }
+
+        //crt ->hash.p = *p;
+        //crt ->hash.len = 64;
+        //*p = end_ext_octet;
 
         /*
          * Detect supported extensions
@@ -3268,6 +3288,105 @@ int mbedtls_asn1_get_bool(unsigned char **p,
 
     *val = (**p != 0) ? 1 : 0;
     (*p)++;
+
+    return 0;
+}
+
+int mbedtls_x509write_crt_set_basic_constraints(mbedtls_x509write_cert *ctx,
+                                                int is_ca, int max_pathlen)
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    unsigned char buf[9];
+    unsigned char *c = buf + sizeof(buf);
+    size_t len = 0;
+
+    //my_memset(buf, 0, 9);
+    for(int i = 0; i < 9; i++)
+        buf[i] = 0;
+
+    if (is_ca && max_pathlen > 127) {
+        return MBEDTLS_ERR_X509_BAD_INPUT_DATA;
+    }
+
+    if (is_ca) {
+        if (max_pathlen >= 0) {
+            MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_int(&c, buf,
+                                                             max_pathlen));
+        }
+        MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_bool(&c, buf, 1));
+    }
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, len));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf,
+                                                     MBEDTLS_ASN1_CONSTRUCTED |
+                                                     MBEDTLS_ASN1_SEQUENCE));
+
+    return
+        mbedtls_x509write_crt_set_extension(ctx, MBEDTLS_OID_BASIC_CONSTRAINTS,
+                                            MBEDTLS_OID_SIZE(MBEDTLS_OID_BASIC_CONSTRAINTS),
+                                            is_ca, buf + 9 - len, len);
+}
+
+int x509_get_basic_constraints(unsigned char **p,
+                                      const unsigned char *end,
+                                      int *ca_istrue,
+                                      int *max_pathlen)
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    size_t len;
+
+    /*
+     * BasicConstraints ::= SEQUENCE {
+     *      cA                      BOOLEAN DEFAULT FALSE,
+     *      pathLenConstraint       INTEGER (0..MAX) OPTIONAL }
+     */
+    *ca_istrue = 0; /* DEFAULT FALSE */
+    *max_pathlen = 0; /* endless */
+
+    if ((ret = mbedtls_asn1_get_tag(p, end, &len,
+                                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+
+    if (*p == end) {
+        return 0;
+    }
+
+    if ((ret = mbedtls_asn1_get_bool(p, end, ca_istrue)) != 0) {
+        if (ret == MBEDTLS_ERR_ASN1_UNEXPECTED_TAG) {
+            ret = mbedtls_asn1_get_int(p, end, ca_istrue);
+        }
+
+        if (ret != 0) {
+            return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+        }
+
+        if (*ca_istrue != 0) {
+            *ca_istrue = 1;
+        }
+    }
+
+    if (*p == end) {
+        return 0;
+    }
+
+    if ((ret = mbedtls_asn1_get_int(p, end, max_pathlen)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+
+    if (*p != end) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS,
+                                 MBEDTLS_ERR_ASN1_LENGTH_MISMATCH);
+    }
+
+    /* Do not accept max_pathlen equal to INT_MAX to avoid a signed integer
+     * overflow, which is an undefined behavior. */
+    if (*max_pathlen == INT_MAX) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS,
+                                 MBEDTLS_ERR_ASN1_INVALID_LENGTH);
+    }
+
+    (*max_pathlen)++;
 
     return 0;
 }

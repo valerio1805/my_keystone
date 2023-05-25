@@ -1,3 +1,4 @@
+
 //******************************************************************************
 // Copyright (c) 2018, The Regents of the University of California (Regents).
 // All Rights Reserved. See LICENSE for license details.
@@ -516,11 +517,17 @@ unsigned long create_enclave(unsigned long *eidptr, struct keystone_sbi_create c
     return 0;
   }
   const char oid_ext[] = {0xff, 0x20, 0xff};
+  //const char oid_ext2[] = {0x55, 0x1d, 0x13};
+  //unsigned char max_path[] = {0x0A};
   unsigned char app[64];
   my_memcpy(app, enclaves[eid].hash, 64);
 
   // The measure of the enclave is inserted as extension in the cert created for his local attestation keys
-  mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext, 3, 0, app, 65);
+  mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext, 3, 0, app, 64);
+  //mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext2, 3, 1, max_path, 2);
+  mbedtls_x509write_crt_set_basic_constraints(&enclaves[eid].crt_local_att, 1, 10);
+
+
 
   unsigned char cert_der[1024];
   int effe_len_cert_der = 0;
@@ -902,8 +909,8 @@ unsigned long do_crypto_op(enclave_id eid, int flag, unsigned char* data, int da
       sha3_update(&ctx_hash, enclaves[eid].pk_ldev, 32);
       sha3_final(fin_hash, &ctx_hash);
 
-      ed25519_sign(sign, fin_hash, 64, enclaves[eid].local_att_pub, enclaves[eid].local_att_priv);
-      //ed25519_sign(sign, fin_hash, 64, ECASM_pk, ECASM_priv);
+      //ed25519_sign(sign, fin_hash, 64, enclaves[eid].local_att_pub, enclaves[eid].local_att_priv);
+      ed25519_sign(sign, fin_hash, 64, ECASM_pk, ECASM_priv);
       my_memcpy(out_data, sign, 64);
       *len_out_data = 64;
       return 0;

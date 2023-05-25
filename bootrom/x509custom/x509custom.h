@@ -750,5 +750,11 @@ int x509_get_crt_ext(unsigned char **p,
                             mbedtls_x509_crt *crt,
                             mbedtls_x509_crt_ext_cb_t cb,
                             void *p_ctx);
+int x509_get_basic_constraints(unsigned char **p,
+                                      const unsigned char *end,
+                                      int *ca_istrue,
+                                      int *max_pathlen);
+int mbedtls_x509write_crt_set_basic_constraints(mbedtls_x509write_cert *ctx,
+                                                int is_ca, int max_pathlen);
 #endif
   

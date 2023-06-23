@@ -152,7 +152,7 @@ int get_enclave_region_index(enclave_id eid, enum enclave_region_type type);
 uintptr_t get_enclave_region_base(enclave_id eid, int memid);
 uintptr_t get_enclave_region_size(enclave_id eid, int memid);
 unsigned long get_sealing_key(uintptr_t seal_key, uintptr_t key_ident, size_t key_ident_size, enclave_id eid);
-unsigned long create_keypair(enclave_id, unsigned char* pk ,int index);
+unsigned long create_keypair(enclave_id, unsigned char* pk ,int seed_enc);
 unsigned long get_cert_chain(enclave_id eid, unsigned char** certs, int* sizes);
 unsigned long do_crypto_op(enclave_id eid, int flag, unsigned char* data, int data_len, unsigned char* out_data, int* len_out_data, unsigned char* pk);
 #endif

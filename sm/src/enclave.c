@@ -829,7 +829,7 @@ unsigned long get_sealing_key(uintptr_t sealing_key, uintptr_t key_ident,
   return SBI_ERR_SM_ENCLAVE_SUCCESS;
 }
 
-unsigned long create_keypair(enclave_id eid, unsigned char* pk, int index){
+unsigned long create_keypair(enclave_id eid, unsigned char* pk, int seed_enc){
 
   unsigned char seed[PRIVATE_KEY_SIZE];
   unsigned char pk_app[PUBLIC_KEY_SIZE];
@@ -839,7 +839,7 @@ unsigned long create_keypair(enclave_id eid, unsigned char* pk, int index){
 
   // The new keypair is obtained adding at the end of the CDI of the enclave an index, provided by the enclave itself
   my_memcpy(app, enclaves[eid].CDI, 64);
-  app[64] = index + '0';
+  app[64] = seed_enc + '0';
   
 
   sha3_ctx_t ctx_hash;

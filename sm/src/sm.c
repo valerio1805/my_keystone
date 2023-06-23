@@ -202,20 +202,20 @@ void sm_copy_key()
   if ((mbedtls_x509_crt_parse_der(&uff_cert_sm, cert_sm, length_cert)) != 0){
 
       // If there are some problems parsing a cert, all the start process is stopped
-      sbi_printf("\n\n\n[SM] Error parsing the certificate created during the booting process");
+      sbi_printf("\n\n\n[SM] Error parsing the ECA cert created during the booting process");
       sbi_hart_hang();
   }
   else{
-    sbi_printf("\n[SM] The certificate of the security monitor is correctly parsed\n\n");
+    sbi_printf("\n[SM] The certificate of the ECA is correctly parsed\n\n");
 
   }
 
   if ((mbedtls_x509_crt_parse_der(&uff_cert_root, cert_root, length_cert_root)) != 0){
-      sbi_printf("[SM] Error parsing the root of trust certificate\n\n");
+      sbi_printf("[SM] Error parsing the RoT certificate\n\n");
       sbi_hart_hang();
   }
   else{
-    sbi_printf("[SM] The root of trust certificate is correctly parsed\n\n");
+    sbi_printf("[SM] The RoT certificate is correctly parsed\n\n");
 
   }
 
@@ -278,7 +278,7 @@ void sm_copy_key()
   char* str_ret = validation(uff_cert_sm);
   
   if(my_strlen(str_ret) != 0){
-    sbi_printf("[SM] Problem with the sm certificate: %s \n\n", str_ret);
+    sbi_printf("[SM] Problem with the ECA certificate: %s \n\n", str_ret);
     sbi_hart_hang();
 
   }
@@ -286,7 +286,7 @@ void sm_copy_key()
   {
     str_ret = validation(uff_cert_root);
     if(my_strlen(str_ret) != 0){
-      sbi_printf("[SM] Problem with the root of trust certificate: %s \n\n", str_ret);
+      sbi_printf("[SM] Problem with the RoT certificate: %s \n\n", str_ret);
       sbi_hart_hang();
 
     }
@@ -335,7 +335,7 @@ void sm_copy_key()
 
  // Once the cert in der format is parsed, there is a field inserted in the structure that represents the raw data of the cert that is used to compute the hash
   // that later has been signed with the public key of the issuer
-  // Using the same field, the sm cane verify the signature inserted in his cert, using the public key of the issuer (in this case the issuer is the root of trust)
+  // Using the same field, the sm cane verify the signature inserted in his cert, using the public key of the issuer (in this case the issuer is the RoT)
 
   sha3_init(&ctx_hash, 64);
   sha3_update(&ctx_hash, uff_cert_sm.tbs.p, uff_cert_sm.tbs.len);
@@ -343,11 +343,11 @@ void sm_copy_key()
   sbi_printf("[SM] Verifying the chain signature of the certificates until the man cert...\n\n");
 
   if(ed25519_verify(uff_cert_sm.sig.p, hash_for_verification, 64, uff_cert_root.pk.pk_ctx.pub_key) == 0){
-    sbi_printf("[SM] Error verifying the signature of the sm certificate\n\n");
+    sbi_printf("[SM] Error verifying the signature of the ECA certificate\n\n");
     sbi_hart_hang();
   }
   else{
-    // The verification process is also repeated to verify the cert associated to the root of trust, certified with the private key of the manufacturer
+    // The verification process is also repeated to verify the cert associated to the RoT, certified with the private key of the manufacturer
     sbi_printf("[SM] The signature of the sm certificate is ok\n\n");
     sha3_init(&ctx_hash, 64);
     sha3_update(&ctx_hash, uff_cert_root.tbs.p, uff_cert_root.tbs.len);
@@ -355,11 +355,11 @@ void sm_copy_key()
     //hash_for_verification[0] = 0x0;
 
     if(ed25519_verify(uff_cert_root.sig.p, hash_for_verification, 64, uff_cert_man.pk.pk_ctx.pub_key) == 0){
-      sbi_printf("[SM] Error verifying the signature of the root of trust certificate\n\n");
+      sbi_printf("[SM] Error verifying the signature of the RoT certificate\n\n");
       sbi_hart_hang();
     }
     else{
-      sbi_printf("[SM] The signature of the root of trust certificate is ok\n\n");
+      sbi_printf("[SM] The signature of the RoT certificate is ok\n\n");
 
       sbi_printf("[SM] All the chain is verified\n\n");
     }
@@ -506,7 +506,7 @@ void sm_print_cert()
 {
 	int i;
 
-	printm("Booting from Security Monitor\n");
+	printm("Booting from SM\n");
 	printm("Size: %d\n", sanctum_sm_size[0]);
 
 	printm("============ PUBKEY =============\n");
@@ -592,7 +592,7 @@ void sm_init(bool cold_boot)
     sbi_hart_hang();
   }
 
-  sbi_printf("[SM] Keystone security monitor has been initialized!\n\n");
+  sbi_printf("[SM] Keystone SM has been initialized!\n\n");
   final_value = sbi_timer_value();
   sbi_printf("Ticks needed to start the SM: %ld\n", final_value - init_value);
 
@@ -604,15 +604,14 @@ void sm_init(bool cold_boot)
 }
 
 char* validation(mbedtls_x509_crt cert){
-
-  //return "Problem with the issuer of the certificate";
+	
   if(cert.ne_issue_arr == 0)
     return "Problem with the issuer of the certificate";
   if(cert.ne_subje_arr == 0)
     return "Problem with the subject of the certificate";
-  if((cert.valid_from.day == 0) || (cert.valid_from.mon == 0) || (cert.valid_from.day == 0))
+  if(((cert.valid_from.day < 1)&& (cert.valid_from.day > 31)) || ((cert.valid_from.mon < 1)&& (cert.valid_from.mon > 12)) || (cert.valid_from.year == 0))
     return "Problem with the valid_from field of the certificate";
-  if((cert.valid_to.day == 0) || (cert.valid_to.mon == 0) || (cert.valid_to.day == 0))
+  if(((cert.valid_to.day < 1)&& (cert.valid_to.day > 31)) || ((cert.valid_to.mon < 1)&& (cert.valid_to.mon > 12)) || (cert.valid_to.year == 0))
     return "Problem with the valid_to field of the certificate";
   if(cert.pk.pk_ctx.len != 32)
     return "Problem with the pk length of the certificate";

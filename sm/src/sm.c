@@ -198,24 +198,26 @@ void sm_copy_key()
   sbi_printf("\n-------------------------------------------------\n"); */
   
   // The different certs are parsed if there are no 
-  
+  //cert_sm[0] = 0xAF;
   if ((mbedtls_x509_crt_parse_der(&uff_cert_sm, cert_sm, length_cert)) != 0){
 
       // If there are some problems parsing a cert, all the start process is stopped
-      sbi_printf("\n\n\n[SM] Error parsing the ECA cert created during the booting process");
+      //cambiare printf certificato
+      //cambiare sm in verifica successiva
+      sbi_printf("\n\n\n[SM] Error parsing the ECA certificate");
       sbi_hart_hang();
   }
   else{
-    sbi_printf("\n[SM] The certificate of the ECA is correctly parsed\n\n");
+    sbi_printf("\n[SM] The ECA certificate is correctly parsed\n\n");
 
   }
 
   if ((mbedtls_x509_crt_parse_der(&uff_cert_root, cert_root, length_cert_root)) != 0){
-      sbi_printf("[SM] Error parsing the RoT certificate\n\n");
+      sbi_printf("[SM] Error parsing the DRK certificate\n\n");
       sbi_hart_hang();
   }
   else{
-    sbi_printf("[SM] The RoT certificate is correctly parsed\n\n");
+    sbi_printf("[SM] The DRK certificate is correctly parsed\n\n");
 
   }
 
@@ -275,8 +277,8 @@ void sm_copy_key()
 */
 
   // Check that all the certs in the chain are formally correct
+  //uff_cert_sm.valid_from.day = 0;
   char* str_ret = validation(uff_cert_sm);
-  
   if(my_strlen(str_ret) != 0){
     sbi_printf("[SM] Problem with the ECA certificate: %s \n\n", str_ret);
     sbi_hart_hang();
@@ -286,7 +288,7 @@ void sm_copy_key()
   {
     str_ret = validation(uff_cert_root);
     if(my_strlen(str_ret) != 0){
-      sbi_printf("[SM] Problem with the RoT certificate: %s \n\n", str_ret);
+      sbi_printf("[SM] Problem with the DRK certificate: %s \n\n", str_ret);
       sbi_hart_hang();
 
     }
@@ -335,31 +337,31 @@ void sm_copy_key()
 
  // Once the cert in der format is parsed, there is a field inserted in the structure that represents the raw data of the cert that is used to compute the hash
   // that later has been signed with the public key of the issuer
-  // Using the same field, the sm cane verify the signature inserted in his cert, using the public key of the issuer (in this case the issuer is the RoT)
+  // Using the same field, the sm cane verify the signature inserted in his cert, using the public key of the issuer (in this case the issuer is the root of trust)
 
   sha3_init(&ctx_hash, 64);
   sha3_update(&ctx_hash, uff_cert_sm.tbs.p, uff_cert_sm.tbs.len);
   sha3_final(hash_for_verification, &ctx_hash);
-  sbi_printf("[SM] Verifying the chain signature of the certificates until the man cert...\n\n");
+  sbi_printf("[SM] Verifying the chain signatures of the certificates until the man cert...\n\n");
 
   if(ed25519_verify(uff_cert_sm.sig.p, hash_for_verification, 64, uff_cert_root.pk.pk_ctx.pub_key) == 0){
     sbi_printf("[SM] Error verifying the signature of the ECA certificate\n\n");
     sbi_hart_hang();
   }
   else{
-    // The verification process is also repeated to verify the cert associated to the RoT, certified with the private key of the manufacturer
-    sbi_printf("[SM] The signature of the sm certificate is ok\n\n");
+    // The verification process is also repeated to verify the cert associated to the root of trust, certified with the private key of the manufacturer
+    sbi_printf("[SM] The signature of the ECA certificate is ok\n\n");
     sha3_init(&ctx_hash, 64);
     sha3_update(&ctx_hash, uff_cert_root.tbs.p, uff_cert_root.tbs.len);
     sha3_final(hash_for_verification, &ctx_hash);
     //hash_for_verification[0] = 0x0;
 
     if(ed25519_verify(uff_cert_root.sig.p, hash_for_verification, 64, uff_cert_man.pk.pk_ctx.pub_key) == 0){
-      sbi_printf("[SM] Error verifying the signature of the RoT certificate\n\n");
+      sbi_printf("[SM] Error verifying the signature of the DRK certificate\n\n");
       sbi_hart_hang();
     }
     else{
-      sbi_printf("[SM] The signature of the RoT certificate is ok\n\n");
+      sbi_printf("[SM] The signature of the DRK certificate is ok\n\n");
 
       sbi_printf("[SM] All the chain is verified\n\n");
     }
@@ -388,8 +390,10 @@ void sm_copy_key()
     }
   sbi_printf("\n\n");
   */
+
+  //uff_cert_sm.hash.p[0] = 0x23;
   if(my_memcmp(uff_cert_sm.hash.p, sm_hash, 64) != 0){
-    sbi_printf("[SM] Problem with the extension of the certificate of the ECA");
+    sbi_printf("[SM] Problem with the extension of the ECA certificate");
     sbi_hart_hang();
   }
   else

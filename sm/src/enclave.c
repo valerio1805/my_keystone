@@ -525,7 +525,7 @@ unsigned long create_enclave(unsigned long *eidptr, struct keystone_sbi_create c
   // The measure of the enclave is inserted as extension in the cert created for his local attestation keys
   mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext, 3, 0, app, 64);
   //mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext2, 3, 1, max_path, 2);
-  mbedtls_x509write_crt_set_basic_constraints(&enclaves[eid].crt_local_att, 1, 10);
+  //mbedtls_x509write_crt_set_basic_constraints(&enclaves[eid].crt_local_att, 1, 10);
 
 
 

@@ -153,14 +153,23 @@ int bootloader()
   sha3_update(&hash_ctx, (void *)DRAM_BASE, sanctum_sm_size);
   sha3_final(sanctum_sm_hash, &hash_ctx);
   ed25519_sign(sanctum_sm_signature_test, sanctum_sm_hash, 64, sanctum_dev_public_key, sanctum_dev_secret_key);
+  //--------------------------------------------------------------------------------------------------------------------//
+
+
+
+
+
+
+
+
 
   // Measure SM to verify the signature
   sha3_init(&hash_ctx, 64);
   sha3_update(&hash_ctx, (void *)DRAM_BASE, sanctum_sm_size);
   sha3_final(sanctum_sm_hash, &hash_ctx);
   
-  // If the signature is modified, the verification goes wrong
-  //sanctum_sm_signature_test[0] = random_byte(0);
+  // If the hash is not the correct one, the verification goes wrong
+  //sanctum_sm_hash[0] = random_byte(0);
 
   // Verify the signature of the security monitor provided by the manufacturer
 
@@ -169,6 +178,7 @@ int bootloader()
     // The return value of the bootloader function is used to check if the secure boot is gone well or not
     return 0;
   }
+  ed25519_create_keypair(sanctum_device_root_key_pub, sanctum_device_root_key_priv, sanctum_uds);
 
   // All ok
   // Combine hash of the security monitor and the device root key to obtain the CDI
@@ -179,7 +189,7 @@ int bootloader()
 
   // The device root keys are created from the CDI
   // This keys are certified by the manufacuter and the cert is stored in memory, like the cert of the manufacturer
-  ed25519_create_keypair(sanctum_device_root_key_pub, sanctum_device_root_key_priv, sanctum_CDI);
+  //ed25519_create_keypair(sanctum_device_root_key_pub, sanctum_device_root_key_priv, sanctum_CDI);
 
   // The ECA keys are obtained starting from a seed generated hashing the CDI and the measure of the SM
   unsigned char seed_for_ECA_keys[64];
@@ -316,7 +326,7 @@ int bootloader()
   /***********************************************************************************************************/
   /***********************************************************************************************************/
 
-  
+  /*
   mbedtls_x509write_cert cert_root;
   mbedtls_x509write_crt_init(&cert_root);
 
@@ -414,11 +424,12 @@ int bootloader()
 
   sanctum_length_cert_root = effe_len_cert_der_root;
   memcpy(sanctum_cert_root, cert_real_root, effe_len_cert_der_root);
+  */
   /*****************************************************************************************************************/
   /*****************************************************************************************************************/
 
   //memcpy(test, sanctum_device_root_key_pub, 64);
-
+  
   //Test to check the signature
   //////////////////////////////////////////////////////////////////////////////
   /*

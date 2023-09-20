@@ -19,7 +19,7 @@ platform-objs-y += ../../src/sbi_trap_hack.o
 platform-objs-y += ../../src/trap.o
 platform-objs-y += ../../src/ipi.o
 platform-objs-y += ../../src/x509custom.o
-platform-objs-y += ../../src/string.o
+platform-objs-y += ../../src/myString.o
 
 
 

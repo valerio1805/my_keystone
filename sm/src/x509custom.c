@@ -1,4 +1,4 @@
-#include "string.h"
+#include "myString.h"
 #include "x509custom.h"
 #include "ed25519/ed25519.h"
 #include "sha3/sha3.h"

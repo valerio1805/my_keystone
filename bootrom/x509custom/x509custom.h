@@ -710,14 +710,14 @@ int pk_get_pk_alg(unsigned char **p,
                          const unsigned char *end,
                          mbedtls_pk_type_t *pk_alg, mbedtls_asn1_buf *params);
                          
-unsigned int my_strlen(const char *s);
+/* unsigned int my_strlen(const char *s);
 
 int my_strncmp( const char * s1, const char * s2, size_t n );
 char* my_strncpy(char* destination, const char* source, size_t num);
 void * my_memmove(void* dest, const void* src, unsigned int n);
 int my_memcmp (const void *str1, const void *str2, size_t count);
 void* my_memset(void* dest, int byte, size_t len);
-void* my_memcpy(void* dest, const void* src, size_t len);
+void* my_memcpy(void* dest, const void* src, size_t len); */
 int mbedtls_x509write_crt_set_issuer_name_mod(mbedtls_x509write_cert *ctx, const char *issuer_name);
 int mbedtls_x509_string_to_names_mod(mbedtls_asn1_named_data *head, const char *name, int *ne);
 int mbedtls_asn1_store_named_data_mod( mbedtls_asn1_named_data *head,const char *oid, size_t oid_len,const unsigned char *val,size_t val_len, int *ne);

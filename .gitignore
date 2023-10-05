@@ -5,3 +5,12 @@ build/
 riscv64/
 riscv32/
 build_dir/
+sm/opensbi/firmware/payloads/
+sm/opensbi/include/
+sm/opensbi/lib/
+sm/opensbi/platform/
+sm/opensbi/scripts/
+sm/plat/
+sm/src/platform/
+sm/src/plugins/
+sm/tests/

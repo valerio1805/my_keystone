@@ -2679,7 +2679,7 @@ int mbedtls_x509_set_extension(mbedtls_asn1_named_data *head, const char *oid, s
  */
 int x509_get_uid(unsigned char **p,
                         const unsigned char *end,
-                        mbedtls_x509_buf *uid, int n)
+                        mbedtls_x509_buf_crt *uid, int n)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
 
@@ -3095,10 +3095,12 @@ int x509_get_crt_ext(unsigned char **p,
                 }
         }
         else{
+            x509_get_dice_tcbInfo(p, end_ext_octet, &crt->dice_tcb_info);
             //sbi_printf("Arrivato dentro else\n");
+            /*
             crt ->hash.p = *p;
             crt ->hash.len = 64;
-            *p += 64;
+            *p += 64;*/
         }
 
         //crt ->hash.p = *p;
@@ -3236,7 +3238,7 @@ int x509_get_crt_ext(unsigned char **p,
 }
 
 int mbedtls_x509_get_ext(unsigned char **p, const unsigned char *end,
-                         mbedtls_x509_buf *ext, int tag)
+                         mbedtls_x509_buf_crt *ext, int tag)
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
     size_t len;
@@ -3390,3 +3392,257 @@ int x509_get_basic_constraints(unsigned char **p,
 
     return 0;
 }
+
+void init_dice_tcbInfo(dice_tcbInfo* tcbInfo){
+    tcbInfo->vendor[0] = '\0';
+    tcbInfo->l_ven = 0;
+    tcbInfo->model[0] = '\0';
+    tcbInfo->l_mod = 0;
+    tcbInfo->l_ver = 0;
+    tcbInfo->version[0] ='\0';
+    tcbInfo->svn = -1;
+    tcbInfo->layer = -1;
+    tcbInfo ->index = -1;
+    tcbInfo ->flags[0] =  '\0';
+    tcbInfo-> vendorInfo[0] ='\0';
+    tcbInfo ->l_vi = 0;
+    tcbInfo ->type[0] = '\0';
+    tcbInfo->l_ty = 0;
+    
+    for(int i = 0; i < 2; i ++){
+        tcbInfo->fwids[i].digest[0] ='\0';
+        tcbInfo->fwids[i].OID_algho[0] = '0';
+        tcbInfo->fwids[i].oid_len = 0;
+    } 
+}
+
+void set_dice_tcbInfo_vendor(dice_tcbInfo* tcbInfo, unsigned char vendor[], int lv){
+    my_memcpy(tcbInfo->vendor, vendor, lv);
+    tcbInfo->l_ven = lv;
+}
+void set_dice_tcbInfo_version(dice_tcbInfo* tcbInfo, unsigned char version[], int lv){
+    my_memcpy(tcbInfo->version, version, lv);
+    tcbInfo->l_ver = lv;
+}
+void set_dice_tcbInfo_model(dice_tcbInfo* tcbInfo, unsigned char model[], int l){
+    my_memcpy(tcbInfo->model, model, l);
+    tcbInfo->l_mod = l;
+}
+void set_dice_tcbInfo_vi(dice_tcbInfo* tcbInfo, unsigned char vi[], int l){
+    my_memcpy(tcbInfo->vendorInfo, vi, l);
+    tcbInfo->l_vi = l;
+}
+void set_dice_tcbInfo_type(dice_tcbInfo* tcbInfo, unsigned char type[], int l){
+    my_memcpy(tcbInfo->type, type, l);
+    tcbInfo->l_ty = l;
+}
+
+void set_dice_tcbInfo_measure(dice_tcbInfo* tcbInfo, measure m){
+    my_memcpy(tcbInfo->fwids[0].digest, m.digest, 64);
+    my_memcpy(tcbInfo->fwids[0].OID_algho, m.OID_algho, m.oid_len);
+    tcbInfo->fwids[0].oid_len = m.oid_len;
+}
+
+
+
+int setting_tcbInfo(dice_tcbInfo* dice_tcbInfo, unsigned char vendor[] , int l_ven, unsigned char model[], int l_m, unsigned char version[], int l_ver,
+                            int svn, int layer, int index, unsigned char flags[], int l_f, unsigned char vendor_info[], int l_vf, unsigned char type[], int l_t,
+                            measure measures[], int l_mea){
+                                if((l_ven > 64) ||(l_m > 64)|| (l_ver > 64) ||(l_f > 4)|| (l_vf > 16) ||(l_t > 16)|| (l_mea > 10))
+                                    return 1;
+                                if((l_ven < 0 ) ||(l_m < 0)|| (l_ver < 0) ||(l_f < 0)|| (l_vf < 0) ||(l_t < 0)|| (l_mea < 0))
+                                    return 1;
+                                my_memcpy(dice_tcbInfo->vendor, vendor, l_ven);
+                                my_memcpy(dice_tcbInfo->model, model, l_m);
+                                my_memcpy(dice_tcbInfo->version, version, l_ver);
+                                my_memcpy(dice_tcbInfo->flags, flags, l_f);
+                                my_memcpy(dice_tcbInfo->vendorInfo, vendor_info, l_vf);
+                                my_memcpy(dice_tcbInfo->type, type, l_t);
+                                for(int i = 0; i < l_mea; i++){
+                                    my_memcpy(dice_tcbInfo->fwids[i].digest, measures[i].digest, 64);
+                                    my_memcpy(dice_tcbInfo->fwids[i].OID_algho, measures[i].OID_algho, measures[i].oid_len);
+                                    dice_tcbInfo->fwids[i].oid_len = measures[i].oid_len;
+                                }
+                                return 0;
+}
+
+
+
+
+/*int mbedtls_x509write_crt_set_dice_tcbInfo(mbedtls_x509write_cert *ctx,
+                                                dice_tcbInfo info_struct)*/
+
+int mbedtls_x509write_crt_set_dice_tcbInfo(mbedtls_x509write_cert *ctx,
+                                                dice_tcbInfo info_struct, int dim, unsigned char buf[], size_t buf_size)
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    //int dim = sizeof(info_struct);
+    //unsigned char buf[dim];
+    unsigned char *c = buf + buf_size; //sizeof(buf);
+    size_t len = 0;
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.fwids[0].digest,
+                                                        64));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, 64));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf, MBEDTLS_ASN1_OCTET_STRING));
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf,
+                                                            (const unsigned char *) info_struct.fwids[0].OID_algho, info_struct.fwids[0].oid_len));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, info_struct.fwids[0].oid_len));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf, MBEDTLS_ASN1_OID));
+  
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, len));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf,
+                                                     MBEDTLS_ASN1_CONSTRUCTED |
+                                                     MBEDTLS_ASN1_SEQUENCE));
+    
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.type,
+                                                        16));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, 16));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf, MBEDTLS_ASN1_OCTET_STRING));
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.vendorInfo,
+                                                        16));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, 16));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf, MBEDTLS_ASN1_OCTET_STRING));
+
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.flags,
+                                                        4));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, 4));
+
+
+    //riferimento la set_basic_connstraint di sopra
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_int(&c, buf,
+                                                             info_struct.index));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_int(&c, buf,
+                                                             info_struct.layer));                                                             
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_int(&c, buf,
+                                                             info_struct.svn));
+
+    //Riferimento x509write_crt.c riga 349
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.version,
+                                                        info_struct.l_ver));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf,  info_struct.l_ver));
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.model,
+                                                         info_struct.l_mod));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf,  info_struct.l_mod));
+
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_raw_buffer(&c, buf, info_struct.vendor,
+                                                             info_struct.l_ven));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf,  info_struct.l_ven));                                                        
+    
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&c, buf, len));
+    MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_tag(&c, buf,
+                                                     MBEDTLS_ASN1_CONSTRUCTED |
+                                                     MBEDTLS_ASN1_SEQUENCE));
+
+    const char oid_dice_tcbInfo[] = {0x2, 0x17, 0x85, 0x5, 0x4, 0x1};
+    return
+        mbedtls_x509write_crt_set_extension(ctx, oid_dice_tcbInfo,
+                                            6,
+                                            1, buf + dim - len, len);
+}
+
+
+int x509_get_dice_tcbInfo(unsigned char **p,
+                                      const unsigned char *end,
+                                      dice_tcbInfo* info_struct)
+{
+    int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
+    size_t len;
+
+    size_t app_len;
+    
+  
+    if ((ret = mbedtls_asn1_get_tag(p, end, &len,
+                                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+
+    if (*p == end) {
+        return 0;
+    }  
+
+    if ((ret = mbedtls_asn1_get_len(p, end, &app_len)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_SERIAL, ret);
+    }
+
+    my_memcpy(info_struct->vendor, *p, app_len);
+    *p += app_len;
+
+    if ((ret = mbedtls_asn1_get_len(p, end, &app_len)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_SERIAL, ret);
+    }
+
+    my_memcpy(info_struct->model, *p, app_len);
+    *p += app_len;
+
+    if ((ret = mbedtls_asn1_get_len(p, end, &app_len)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_SERIAL, ret);
+    }
+    my_memcpy(info_struct->version, *p, app_len);
+    *p += app_len;
+
+    ret = mbedtls_asn1_get_int(p, end, &info_struct ->svn);
+    ret = mbedtls_asn1_get_int(p, end, &info_struct ->layer);
+    ret = mbedtls_asn1_get_int(p, end, &info_struct ->index);
+
+    if ((ret = mbedtls_asn1_get_len(p, end, &app_len)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_SERIAL, ret);
+    }
+
+    my_memcpy(info_struct->flags, *p, app_len);    
+    *p += app_len;
+
+    if ((ret = mbedtls_asn1_get_tag(p, end, &app_len,
+                                    MBEDTLS_ASN1_OCTET_STRING)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+    
+    my_memcpy(info_struct->vendorInfo, *p, app_len); 
+    *p += app_len;
+
+    if ((ret = mbedtls_asn1_get_tag(p, end, &app_len,
+                                    MBEDTLS_ASN1_OCTET_STRING)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+    my_memcpy(info_struct->type, *p, app_len); 
+
+    *p += app_len;
+
+    if ((ret = mbedtls_asn1_get_tag(p, end, &len,
+                                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+
+     if ((ret = mbedtls_asn1_get_tag(p, end, &len,
+                                    MBEDTLS_ASN1_OID)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+
+
+    my_memcpy(info_struct->fwids[0].OID_algho, *p, len); 
+    info_struct->fwids[0].oid_len = len;
+    
+    *p += len;
+
+    if ((ret = mbedtls_asn1_get_tag(p, end, &app_len,
+                                    MBEDTLS_ASN1_OCTET_STRING)) != 0) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS, ret);
+    }
+
+    my_memcpy(info_struct->fwids[0].digest, *p, app_len);
+    *p += app_len;
+
+
+
+    if (*p != end) {
+        return MBEDTLS_ERROR_ADD(MBEDTLS_ERR_X509_INVALID_EXTENSIONS,
+                                 MBEDTLS_ERR_ASN1_LENGTH_MISMATCH);
+    }
+    
+    return 0;
+}
+

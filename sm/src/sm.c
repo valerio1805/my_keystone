@@ -392,7 +392,7 @@ void sm_copy_key()
   */
 
   //uff_cert_sm.hash.p[0] = 0x23;
-  if(my_memcmp(uff_cert_sm.hash.p, sm_hash, 64) != 0){
+  if(my_memcmp(/*uff_cert_sm.hash.p,*/ uff_cert_sm.dice_tcb_info.fwids[0].digest, sm_hash, 64) != 0){
     sbi_printf("[SM] Problem with the extension of the ECA certificate");
     sbi_hart_hang();
   }
@@ -435,7 +435,7 @@ void sm_copy_key()
   // that are used to signed the cert associated to the attestation key of the different enclaves 
   sha3_init(&ctx_hash, 64);
   sha3_update(&ctx_hash, CDI, 64);
-  sha3_update(&ctx_hash, uff_cert_sm.hash.p, 64);
+  sha3_update(&ctx_hash, uff_cert_sm.dice_tcb_info.fwids[0].digest, 64);
   sha3_final(seed_for_ECA_keys, &ctx_hash);
 
   ed25519_create_keypair(ECASM_pk, ECASM_priv, seed_for_ECA_keys);

@@ -410,6 +410,35 @@ typedef struct mbedtls_x509_time {
 }
 mbedtls_x509_time;
 
+typedef struct measure{
+    unsigned char OID_algho[10];
+    int oid_len;
+    unsigned char digest[64];
+    //dice_tcbInfo *ref;
+}measure;
+
+
+typedef struct dice_tcbInfo{
+
+  unsigned char vendor[32];
+  int l_ven;
+  unsigned char model[32];
+  int l_mod;
+  unsigned char version[32];
+  int l_ver;
+  int svn;
+  int layer;
+  int index;
+  unsigned char flags[4];
+  unsigned char vendorInfo[16];
+  int l_vi;
+  unsigned char type[16];
+  int l_ty;
+  measure fwids[2];
+  
+}dice_tcbInfo;
+
+
 /**
  * Container for an X.509 certificate. The certificate may be chained.
  *
@@ -439,6 +468,7 @@ typedef struct mbedtls_x509_crt {
     int ne_issue_arr;
     int ne_subje_arr;
 
+    dice_tcbInfo dice_tcb_info;
 
     mbedtls_x509_time valid_from;       /**< Start time of certificate validity. */
     mbedtls_x509_time valid_to;         /**< End time of certificate validity. */
@@ -446,13 +476,13 @@ typedef struct mbedtls_x509_crt {
     mbedtls_x509_buf pk_raw;
     mbedtls_pk_context pk;              /**< Container for the public key context. */
 
-    mbedtls_x509_buf issuer_id;         /**< Optional X.509 v2/v3 issuer unique identifier. */
-    mbedtls_x509_buf subject_id;        /**< Optional X.509 v2/v3 subject unique identifier. */
-    mbedtls_x509_buf v3_ext;            /**< Optional X.509 v3 extensions.  */
-    mbedtls_x509_buf hash;
-    mbedtls_x509_sequence subject_alt_names;    /**< Optional list of raw entries of Subject Alternative Names extension (currently only dNSName, uniformResourceIdentifier and OtherName are listed). */
+    mbedtls_x509_buf_crt issuer_id;         /**< Optional X.509 v2/v3 issuer unique identifier. */
+    mbedtls_x509_buf_crt subject_id;        /**< Optional X.509 v2/v3 subject unique identifier. */
+    mbedtls_x509_buf_crt v3_ext;            /**< Optional X.509 v3 extensions.  */
+    //mbedtls_x509_buf hash;
+    //mbedtls_x509_sequence subject_alt_names;    /**< Optional list of raw entries of Subject Alternative Names extension (currently only dNSName, uniformResourceIdentifier and OtherName are listed). */
 
-    mbedtls_x509_sequence certificate_policies; /**< Optional list of certificate policies (Only anyPolicy is printed and enforced, however the rest of the policies are still listed). */
+    //mbedtls_x509_sequence certificate_policies; /**< Optional list of certificate policies (Only anyPolicy is printed and enforced, however the rest of the policies are still listed). */
 
     int MBEDTLS_PRIVATE(ext_types);              /**< Bit string containing detected and parsed extensions */
     int MBEDTLS_PRIVATE(ca_istrue);              /**< Optional Basic Constraint extension value: 1 if this certificate belongs to a CA, 0 otherwise. */
@@ -460,7 +490,7 @@ typedef struct mbedtls_x509_crt {
 
     unsigned int MBEDTLS_PRIVATE(key_usage);     /**< Optional key usage extension value: See the values in x509.h */
 
-    mbedtls_x509_sequence ext_key_usage; /**< Optional list of extended key usage OIDs. */
+    //mbedtls_x509_sequence ext_key_usage; /**< Optional list of extended key usage OIDs. */
 
     unsigned char MBEDTLS_PRIVATE(ns_cert_type); /**< Optional Netscape certificate type extension value: See the values in x509.h */
 
@@ -707,7 +737,6 @@ int mbedtls_asn1_write_bool(unsigned char **p, const unsigned char *start, int b
 int mbedtls_x509_set_extension(mbedtls_asn1_named_data *head, const char *oid, size_t oid_len,
                                int critical, /*const*/ unsigned char *val, size_t val_len, int *ne);
 int mbedtls_x509write_crt_set_extension(mbedtls_x509write_cert *ctx,  const char *oid, size_t oid_len, int critical, /*const*/ unsigned char *val, size_t val_len);
-int x509_get_uid(unsigned char **p, const unsigned char *end,mbedtls_x509_buf *uid, int n);
 int pk_get_pk_alg(unsigned char **p,
                          const unsigned char *end,
                          mbedtls_pk_type_t *pk_alg, mbedtls_asn1_buf *params);
@@ -738,8 +767,7 @@ int mbedtls_x509_get_alg_mod(unsigned char **p, const unsigned char *end,
 int mbedtls_x509_get_sig_alg_mod(const mbedtls_x509_buf_crt *sig_oid, const mbedtls_x509_buf *sig_params,
                              mbedtls_md_type_t *md_alg, mbedtls_pk_type_t *pk_alg,
                              void **sig_opts);
-int mbedtls_x509_get_ext(unsigned char **p, const unsigned char *end,
-                         mbedtls_x509_buf *ext, int tag);
+
 int mbedtls_asn1_get_bool(unsigned char **p,
                           const unsigned char *end,
                           int *val);
@@ -758,4 +786,43 @@ int x509_get_basic_constraints(unsigned char **p,
                                       int *max_pathlen);
 int mbedtls_x509write_crt_set_basic_constraints(mbedtls_x509write_cert *ctx,
                                                 int is_ca, int max_pathlen);
+
+
+void set_dice_tcbInfo(dice_tcbInfo* tcbInfo);
+void init_dice_tcbInfo(dice_tcbInfo* tcbInfo);
+
+int mbedtls_x509write_crt_set_dice_tcbInfo(mbedtls_x509write_cert *ctx,
+                                                dice_tcbInfo info_struct, int dim, unsigned char buf[], size_t buf_size);
+
+//int mbedtls_x509write_crt_set_dice_tcbInfo(mbedtls_x509write_cert *ctx,
+  //                                              dice_tcbInfo info_struct);
+
+int x509_get_dice_tcbInfo(unsigned char **p,
+                                      const unsigned char *end,
+                                      dice_tcbInfo* info_struct);  
+int setting_tcbInfo(dice_tcbInfo* dice_tcbInfo, unsigned char vendor[], int l_ven, unsigned char model[], int l_m, unsigned char version[], int l_ver,
+                            int svn, int layer, int index, unsigned char flags[], int l_f, unsigned char vendor_info[], int l_vf, unsigned char type[], int l_t,
+                            measure measures[], int l_mea);   
+
+void set_dice_tcbInfo_vendor(dice_tcbInfo* tcbInfo, unsigned char vendor[], int lv);
+void set_dice_tcbInfo_version(dice_tcbInfo* tcbInfo, unsigned char version[], int lv);
+void set_dice_tcbInfo_model(dice_tcbInfo* tcbInfo, unsigned char model[], int l);
+void set_dice_tcbInfo_vi(dice_tcbInfo* tcbInfo, unsigned char vi[], int l);
+void set_dice_tcbInfo_type(dice_tcbInfo* tcbInfo, unsigned char type[], int l);
+void set_dice_tcbInfo_measure(dice_tcbInfo* tcbInfo, measure m); 
+
+/*
+int mbedtls_x509_get_ext(unsigned char **p, const unsigned char *end,
+                         mbedtls_x509_buf *ext, int tag);
+*/
+int mbedtls_x509_get_ext(unsigned char **p, const unsigned char *end,
+                         mbedtls_x509_buf_crt *ext, int tag);
+int x509_get_uid(unsigned char **p,
+                        const unsigned char *end,
+                        mbedtls_x509_buf_crt *uid, int n);
+        /*
+int x509_get_uid(unsigned char **p, const unsigned char *end,mbedtls_x509_buf *uid, int n);
+
+        */
+
 #endif

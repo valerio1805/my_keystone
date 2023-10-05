@@ -516,14 +516,32 @@ unsigned long create_enclave(unsigned long *eidptr, struct keystone_sbi_create c
   {
     return 0;
   }
-  const char oid_ext[] = {0xff, 0x20, 0xff};
+  //const char oid_ext[] = {0xff, 0x20, 0xff};
   //const char oid_ext2[] = {0x55, 0x1d, 0x13};
   //unsigned char max_path[] = {0x0A};
-  unsigned char app[64];
-  my_memcpy(app, enclaves[eid].hash, 64);
+  dice_tcbInfo tcbInfo;
+  init_dice_tcbInfo(&tcbInfo);
+ 
+
+  measure m;
+  const unsigned char OID_algo[] = {0x02,0x10,0x03,0x48,0x01,0x65,0x03,0x04,0x02,0x0A};
+  m.oid_len = 10;
+  //unsigned char app[64];
+  my_memcpy(m.OID_algho, OID_algo, m.oid_len);
+  my_memcpy(m.digest, enclaves[eid].hash, 64);
+
+  set_dice_tcbInfo_measure(&tcbInfo, m);
+
+  int dim= 324;
+  unsigned char buf[324];
+
+  if(mbedtls_x509write_crt_set_dice_tcbInfo(&enclaves[eid].crt_local_att, tcbInfo, dim, buf, sizeof(buf))!=0)
+    sbi_printf("\nError setting DICETCB extension!\n");
+
+ 
 
   // The measure of the enclave is inserted as extension in the cert created for his local attestation keys
-  mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext, 3, 0, app, 64);
+  //mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext, 3, 0, app, 64);
   //mbedtls_x509write_crt_set_extension(&enclaves[eid].crt_local_att, oid_ext2, 3, 1, max_path, 2);
   //mbedtls_x509write_crt_set_basic_constraints(&enclaves[eid].crt_local_att, 1, 10);
 

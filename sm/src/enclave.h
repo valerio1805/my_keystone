@@ -14,7 +14,7 @@
 #include "thread.h"
 #include "crypto.h"
 #include "x509custom.h"
-#include "myString.h
+#include "myString.h"
 
 // Special target platform header, set by configure script
 #include TARGET_PLATFORM_HEADER

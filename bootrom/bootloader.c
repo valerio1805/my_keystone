@@ -103,7 +103,8 @@ int bootloader()
   //byte sanctum_sm_key_priv[64];
 
   byte sanctum_ECASM_priv[64];
-  
+  byte buf[324];
+
   int ret;
 
   // TODO: on real device, copy boot image from memory. In simulator, HTIF writes boot image
@@ -283,9 +284,34 @@ int bootloader()
 
   // Adding the measure of the security monitor like extension in its certificate
   //mbedtls_x509write_crt_set_extension(&cert, oid_ext2, 3, 1, max_path, 2);
-  mbedtls_x509write_crt_set_extension(&cert, oid_ext, 3, 0, sanctum_sm_hash, 64);
-  mbedtls_x509write_crt_set_basic_constraints(&cert, 1, 10);
+  //mbedtls_x509write_crt_set_basic_constraints(&cert, 1, 10);
 
+  //mbedtls_x509write_crt_set_extension(&cert, oid_ext, 3, 0, sanctum_sm_hash, 64);
+  
+  dice_tcbInfo tcbInfo;
+  init_dice_tcbInfo(&tcbInfo);
+
+  measure m;
+  const unsigned char OID_algo[] = {0x02,0x10,0x03,0x48,0x01,0x65,0x03,0x04,0x02,0x0A};
+
+
+  memcpy(m.digest, sanctum_sm_hash, 64);
+  memcpy(m.OID_algho, OID_algo, 10);
+  m.oid_len = 10;
+  /*
+  memcpy(tcbInfo.fwids[0].digest, m.digest, 64);
+  memcpy(tcbInfo.fwids[0].OID_algho, m.OID_algho, 9);
+  tcbInfo.fwids[0].oid_len = m.oid_len;*/
+
+  set_dice_tcbInfo_measure(&tcbInfo, m);
+
+  int dim= 324;
+  /*
+  if(memcmp(tcbInfo.fwids[0].digest, sanctum_sm_hash, 64)!=0)
+    return 0;
+    */
+  if(mbedtls_x509write_crt_set_dice_tcbInfo(&cert, tcbInfo, dim, buf, sizeof(buf))!=0)
+    return 0;
 
 
   // The structure mbedtls_x509write_cert is parsed to create a x509 cert in der format, signed with the private key of the issuer and written in memory
@@ -304,12 +330,14 @@ int bootloader()
   int dif  = 1024-effe_len_cert_der;
   // cert_real points to the starts of the cert in der format
   cert_real += dif;
-
   /*
+  mbedtls_x509_crt uff_cert;
+  mbedtls_x509_crt_init(&uff_cert);
+
   if ((mbedtls_x509_crt_parse_der(&uff_cert, cert_real, effe_len_cert_der)) != 0){
      return 0;
   }
-  if(my_memcmp( uff_cert.hash.p_arr, sanctum_sm_hash, 64) != 0)
+  if(memcmp( uff_cert.dice_tcb_info.fwids[0].digest, sanctum_sm_hash, 64) != 0)
     return 0;
   //else
     //return 0;
